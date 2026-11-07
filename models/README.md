@@ -16,6 +16,11 @@ by `usdz2glb.py`, and rendered from the GLB by `render.py`. Review
 `out/contact-sheet.html` before publishing. The build lists any vendor SVGs in
 the API that don't have a spec yet.
 
+CI builds every model on each pull request and uploads the models and contact
+sheet as an artifact. To publish, run the "Publish models to the web flasher"
+workflow from the Actions tab. It builds from `master` and opens the web-flasher
+pull request, like `publish-flasher.sh` does locally.
+
 Each model takes its name from its SVG (`thinknode_m1.svg` → `thinknode_m1.usdz`),
 so a device's `images` entry maps to its model by swapping the extension. The
 copyright notice is written into every file's layer metadata, and the GLB
