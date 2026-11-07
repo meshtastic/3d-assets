@@ -46,7 +46,7 @@ for name in "${names[@]}"; do
 	fi
 	log="$OUT/$name.check.txt"
 	if uv run -q "$HERE/svg2usdz.py" "$spec" "$svg" "$OUT/$name.usdz" --source-url "$url" 2>&1 | tee "$log" \
-		&& uv run -q --python 3.12 --with usd-core usdchecker --arkit "$OUT/$name.usdz" >>"$log" 2>&1 \
+		&& uv run -q "$HERE/usdcheck.py" "$OUT/$name.usdz" >>"$log" 2>&1 \
 		&& uv run -q "$HERE/usdz2glb.py" "$OUT/$name.usdz" --out "$OUT" >>"$log" 2>&1 \
 		&& uv run -q "$HERE/render.py" "$OUT/$name.glb" "$OUT/$name.png" 600 >>"$log" 2>&1; then
 		built+=("$name")

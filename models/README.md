@@ -11,7 +11,7 @@ models/publish-flasher.sh        # open a web-flasher PR with out/*.usdz and out
 ```
 
 Runs on macOS and Linux. Needs `uv` and `curl`; the Python packages are fetched
-on first run. Each model is checked with `usdchecker --arkit`, converted to GLB
+on first run. Each model is checked against the ARKit rules by `usdcheck.py`, converted to GLB
 by `usdz2glb.py`, and rendered from the GLB by `render.py`. Review
 `out/contact-sheet.html` before publishing. The build lists any vendor SVGs in
 the API that don't have a spec yet.
