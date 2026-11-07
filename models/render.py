@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # /// script
-# requires-python = ">=3.11"
+# requires-python = "==3.13.*"  # one Python everywhere, so every machine builds the same models
 # dependencies = ["trimesh>=4.0", "numpy", "pillow", "pygltflib"]
 # ///
 """Render a device model's GLB to a PNG for review, on any platform.

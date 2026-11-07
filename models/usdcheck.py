@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # /// script
-# requires-python = ">=3.11,<3.14"  # usd-core 25.11 has no 3.14 wheels
+# requires-python = "==3.13.*"  # one Python everywhere, so every machine builds the same models
 # dependencies = ["usd-core==25.11"]
 # ///
 """Check USDZ files against the ARKit rules, like `usdchecker --arkit`.

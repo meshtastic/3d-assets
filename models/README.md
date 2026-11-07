@@ -10,8 +10,10 @@ models/build.sh thinknode_m1     # just one
 models/publish-flasher.sh        # open a web-flasher PR with out/*.usdz and out/*.glb
 ```
 
-Runs on macOS and Linux. Needs `uv` and `curl`; the Python packages are fetched
-on first run. Each model is checked against the ARKit rules by `usdcheck.py`, converted to GLB
+Runs on macOS and Linux. Needs `uv` and `curl`; Python 3.13 and the packages
+are fetched on first run. Each script's packages are pinned in the `.lock` file
+next to it, so every machine builds the same models; update one with
+`uv lock --script --upgrade models/<script>.py`. Each model is checked against the ARKit rules by `usdcheck.py`, converted to GLB
 by `usdz2glb.py`, and rendered from the GLB by `render.py`. Review
 `out/contact-sheet.html` before publishing. The build lists any vendor SVGs in
 the API that don't have a spec yet.
