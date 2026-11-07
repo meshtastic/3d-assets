@@ -52,7 +52,7 @@ COPYRIGHT = (
     "manufacturer; the product, and that manufacturer's logos, marks, and trade dress, "
     "remain theirs, and this notice grants no right to either."
 )
-GENERATOR = "Meshtastic-Apple scripts/device-models/svg2usdz.py"
+GENERATOR = "meshtastic/3d-assets models/svg2usdz.py"
 
 AUTO_LAYER_MM = 0.3      # relief of color regions on the face in auto mode
 SCREEN_MM = 0.1          # thickness of the Screen part over the drawn display

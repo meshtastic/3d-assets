@@ -1,43 +1,28 @@
 #!/bin/bash
 # Copyright(c) Garth Vander Houwen 10/14/26.
 #
-# Builds a real-size .usdz for every spec in specs/, from the matching device
-# SVG on the flasher, then checks and renders each one for review.
+# Builds a real-size .usdz and .glb for every spec in specs/, from the matching
+# device SVG on the flasher, then checks and renders each one for review.
 #
-#   scripts/device-models/build.sh [--install] [name ...]
+#   models/build.sh [name ...]
 #
-# Output goes to scripts/device-models/out/ (git-ignored) along with
-# contact-sheet.html. --install also copies the models into
-# Meshtastic/Resources/DeviceModels, which the app bundles.
-# Needs uv (brew install uv); Python packages are fetched on first run.
+# Output goes to models/out/ (git-ignored) along with contact-sheet.html.
+# Runs on macOS and Linux. Needs uv and curl; Python packages are fetched on
+# first run. Exits non-zero if any model fails to build or check.
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-REPO="$(cd "$HERE/../.." && pwd)"
 OUT="$HERE/out"
 CACHE="$OUT/svg"
-INSTALL_DIR="$REPO/Meshtastic/Resources/DeviceModels"
 IMAGE_BASE_URL="https://flasher.meshtastic.org/img/devices"
 API_URL="https://api.meshtastic.org/resource/deviceHardware"
 VENDORS='seeed|rak|elecrow|thinknode|crowpanel|sensecap|xiao|wio|muzi|heltec|lilygo'
 
-install=false
-names=()
-for arg in "$@"; do
-	case "$arg" in
-		--install) install=true ;;
-		*) names+=("$arg") ;;
-	esac
-done
+names=("$@")
 
 mkdir -p "$OUT" "$CACHE"
 if [ ${#names[@]} -eq 0 ]; then
 	for spec in "$HERE"/specs/*.toml; do names+=("$(basename "$spec" .toml)"); done
-fi
-
-# The renderer is compiled once and reused.
-if [ ! -x "$OUT/render" ] || [ "$HERE/render.swift" -nt "$OUT/render" ]; then
-	swiftc -O -o "$OUT/render" "$HERE/render.swift"
 fi
 
 failed=()
@@ -52,7 +37,7 @@ for name in "${names[@]}"; do
 	drawing=$(sed -n 's/^drawing *= *"\(.*\)".*/\1/p' "$spec")
 	if [ -n "$drawing" ]; then
 		svg="$HERE/$drawing"
-		url="https://github.com/meshtastic/Meshtastic-Apple/blob/main/scripts/device-models/$drawing"
+		url="https://github.com/meshtastic/3d-assets/blob/master/models/$drawing"
 		[ -f "$svg" ] || { echo "$name: $drawing is missing"; failed+=("$name (missing drawing)"); continue; }
 	elif ! curl -sfL -o "$svg" "$url" || ! head -c 512 "$svg" | grep -q "<svg"; then
 		echo "$name: $url is not an SVG"
@@ -62,7 +47,8 @@ for name in "${names[@]}"; do
 	log="$OUT/$name.check.txt"
 	if uv run -q "$HERE/svg2usdz.py" "$spec" "$svg" "$OUT/$name.usdz" --source-url "$url" 2>&1 | tee "$log" \
 		&& uv run -q --python 3.12 --with usd-core usdchecker --arkit "$OUT/$name.usdz" >>"$log" 2>&1 \
-		&& "$OUT/render" "$OUT/$name.usdz" "$OUT/$name.png" 600 >>"$log" 2>&1; then
+		&& uv run -q "$HERE/usdz2glb.py" "$OUT/$name.usdz" --out "$OUT" >>"$log" 2>&1 \
+		&& uv run -q "$HERE/render.py" "$OUT/$name.glb" "$OUT/$name.png" 600 >>"$log" 2>&1; then
 		built+=("$name")
 	else
 		echo "$name: build or check failed (see $log)"
@@ -101,7 +87,7 @@ for n in names:
     src = field("source")
     flag = "" if field("confidence") in ("", "vendor") else f' <b>{html.escape(field("confidence"))}</b>'
     cards.append(
-        f'<figure><img src="{n}.png" alt="{n}"><figcaption><a href="{n}.usdz">{n}</a><br>{size} · {kb} KB{flag}'
+        f'<figure><img src="{n}.png" alt="{n}"><figcaption>{n} (<a href="{n}.usdz">usdz</a>, <a href="{n}.glb">glb</a>)<br>{size} · {kb} KB{flag}'
         f'<br><small>{html.escape(field("covers"))}</small>'
         + (f'<br><small><a href="{html.escape(src)}">source</a></small>' if src else "")
         + "</figcaption></figure>"
@@ -113,13 +99,8 @@ with open(os.path.join(out, "contact-sheet.html"), "w") as f:
     f.write(page)
 PY
 
-if $install && [ ${#built[@]} -gt 0 ]; then
-	mkdir -p "$INSTALL_DIR"
-	for name in "${built[@]}"; do cp "$OUT/$name.usdz" "$INSTALL_DIR/"; done
-	echo "installed ${#built[@]} models into ${INSTALL_DIR#"$REPO"/}"
-fi
-
 echo "built ${#built[@]}: ${built[*]-}"
 [ ${#failed[@]} -eq 0 ] || printf 'failed: %s\n' "${failed[@]}"
 [ -z "$missing" ] || echo "no spec yet: $missing"
 echo "review: $OUT/contact-sheet.html"
+[ ${#failed[@]} -eq 0 ]
