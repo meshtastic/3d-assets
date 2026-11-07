@@ -68,5 +68,5 @@ $summary
 - \`public/models/devices/README.md\`: the Meshtastic LLC asset notice, worded for the models. The notice is also embedded in each file.
 
 ## Testing
-Each model passes \`usdchecker --arkit\` and was checked against the manufacturer's published dimensions. Built and rendered by 3d-assets' \`models/build.sh\`.
+Each model passes the ARKit checks in \`models/usdcheck.py\` and was checked against the manufacturer's published dimensions. Built and rendered by 3d-assets' \`models/build.sh\`.
 EOF
