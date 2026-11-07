@@ -1,0 +1,39 @@
+name: Device models
+
+on:
+  pull_request:
+    paths:
+      - "models/**"
+      - ".github/workflows/models.yml"
+  push:
+    branches: [master]
+    paths:
+      - "models/**"
+      - ".github/workflows/models.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build, check and render
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.3.2
+      - name: Build every model
+        run: models/build.sh
+      - name: Upload the models and contact sheet
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: device-models
+          path: |
+            models/out/*.usdz
+            models/out/*.glb
+            models/out/*.png
+            models/out/*.check.txt
+            models/out/contact-sheet.html
+          if-no-files-found: warn

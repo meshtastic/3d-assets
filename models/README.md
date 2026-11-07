@@ -1,25 +1,25 @@
 # Device models
 
-Builds real-size `.usdz` models of devices from the front-view SVGs on the
-flasher, for the app (iPhone, iPad, Mac and Vision Pro) and for
-`public/models/devices/` in web-flasher.
+Builds real-size models of devices from the front-view SVGs on the flasher,
+as `.usdz` for Apple platforms and `.glb` for Android, desktop and the web. They
+are published to `public/models/devices/` in web-flasher, where both apps get them.
 
 ```bash
-scripts/device-models/build.sh                 # build every spec, check, render
-scripts/device-models/build.sh thinknode_m1    # just one
-scripts/device-models/build.sh --install       # also copy into Meshtastic/Resources/DeviceModels
-scripts/device-models/publish-flasher.sh       # open a web-flasher PR with out/*.usdz and a GLB of each
+models/build.sh                  # build every spec, check, convert, render
+models/build.sh thinknode_m1     # just one
+models/publish-flasher.sh        # open a web-flasher PR with out/*.usdz and out/*.glb
 ```
 
-Needs `uv` (`brew install uv`); the Python packages are fetched on first run.
-Review `out/contact-sheet.html` before installing or publishing. The build
-lists any vendor SVGs in the API that don't have a spec yet.
+Runs on macOS and Linux. Needs `uv` and `curl`; the Python packages are fetched
+on first run. Each model is checked with `usdchecker --arkit`, converted to GLB
+by `usdz2glb.py`, and rendered from the GLB by `render.py`. Review
+`out/contact-sheet.html` before publishing. The build lists any vendor SVGs in
+the API that don't have a spec yet.
 
 Each model takes its name from its SVG (`thinknode_m1.svg` → `thinknode_m1.usdz`),
 so a device's `images` entry maps to its model by swapping the extension. The
-copyright notice is written into every file's layer metadata. The app bundles
-the models from `Meshtastic/Resources/DeviceModels` on iPhone, iPad, Mac and
-Vision Pro.
+copyright notice is written into every file's layer metadata, and the GLB
+carries it in `asset.extras`. The license is in [LICENSE-models.md](LICENSE-models.md).
 
 ## Specs
 
@@ -83,7 +83,7 @@ Other optional entries, with coordinates in SVG units:
 `[screen]` marks the display: `bbox` is its visible area in SVG units. It
 becomes a part named `Screen`, laid on whatever is frontmost there in the color
 drawn there (or `color`). The app finds it by that name to show the connected
-radio's live screen on the model, and the name carries into the flasher's GLBs
+radio's live screen on the model, and the name carries into the GLBs
 for Android. Give one to every device with a display. A hand-tuned model can
 name its own `[[part]]` `Screen` instead.
 

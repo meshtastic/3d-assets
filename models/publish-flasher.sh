@@ -1,13 +1,12 @@
 #!/bin/bash
 # Copyright(c) Garth Vander Houwen 10/14/26.
 #
-# Opens a web-flasher pull request with the models from out/ in
-# public/models/devices/, next to the README carrying the copyright notice.
-# Each USDZ also gets a GLB for Android, desktop and the web, made by the
-# flasher's own scripts/usdz2glb.py so it matches the GLBs already there.
-# Run build.sh first and review out/contact-sheet.html. Needs uv.
+# Opens a web-flasher pull request with the models from out/ (each as USDZ
+# and GLB) in public/models/devices/, next to the README carrying the
+# copyright notice. Run build.sh first and review out/contact-sheet.html.
+# Needs gh.
 #
-#   scripts/device-models/publish-flasher.sh [path-to-web-flasher-clone]
+#   models/publish-flasher.sh [path-to-web-flasher-clone]
 set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -19,6 +18,9 @@ BRANCH="device-models-$(date +%Y%m%d)"
 shopt -s nullglob
 models=("$OUT"/*.usdz)
 [ ${#models[@]} -gt 0 ] || { echo "no models in $OUT; run build.sh first"; exit 1; }
+for m in "${models[@]}"; do
+	[ -f "${m%.usdz}.glb" ] || { echo "no GLB for $(basename "$m"); run build.sh again"; exit 1; }
+done
 
 if [ ! -d "$FLASHER/.git" ]; then
 	gh repo clone meshtastic/web-flasher "$FLASHER"
@@ -36,18 +38,14 @@ git switch -q -C "$BRANCH" origin/main
 # A first publish adds the models; later ones update them.
 if compgen -G "$DEST/*.usdz" >/dev/null; then
 	title="Update the device models"
-	summary="Rebuilds the device models in \`public/models/devices/\` from the current specs in Meshtastic-Apple's \`scripts/device-models/\`, and regenerates their GLBs."
+	summary="Rebuilds the device models in \`public/models/devices/\` from the current specs in [meshtastic/3d-assets](https://github.com/meshtastic/3d-assets), with a GLB of each."
 else
 	title="Add real-size 3D device models"
-	summary="Adds real-size USDZ models in \`public/models/devices/\`, one for each device SVG that has a spec in Meshtastic-Apple's \`scripts/device-models/\`, and a GLB of each for glTF viewers. They will be served at \`/models/devices/<name>.usdz\` and \`<name>.glb\`."
+	summary="Adds real-size USDZ models in \`public/models/devices/\`, one for each device SVG that has a spec in [meshtastic/3d-assets](https://github.com/meshtastic/3d-assets), and a GLB of each for glTF viewers. They will be served at \`/models/devices/<name>.usdz\` and \`<name>.glb\`."
 fi
 mkdir -p "$DEST"
 cp "$HERE/flasher-README.md" "$DEST/README.md"
-cp "${models[@]}" "$DEST/"
-published=()
-for m in "${models[@]}"; do published+=("$DEST/$(basename "$m")"); done
-[ -f scripts/usdz2glb.py ] || { echo "scripts/usdz2glb.py is missing from the flasher; can't make the GLBs"; exit 1; }
-uv run -q scripts/usdz2glb.py "${published[@]}" --out "$DEST"
+for m in "${models[@]}"; do cp "$m" "${m%.usdz}.glb" "$DEST/"; done
 git add "$DEST"
 if git diff --cached --quiet; then
 	echo "no changes to publish"
@@ -66,9 +64,9 @@ $summary
 
 ## What changed
 - \`public/models/devices/*.usdz\`: $names
-- \`public/models/devices/*.glb\`: the same models, converted with \`scripts/usdz2glb.py\`
+- \`public/models/devices/*.glb\`: the same models as GLB
 - \`public/models/devices/README.md\`: the Meshtastic LLC asset notice, worded for the models. The notice is also embedded in each file.
 
 ## Testing
-Each model passes \`usdchecker --arkit\` and was checked against the manufacturer's published dimensions. The GLBs come from the flasher's converter, unchanged.
+Each model passes \`usdchecker --arkit\` and was checked against the manufacturer's published dimensions. Built and rendered by 3d-assets' \`models/build.sh\`.
 EOF
