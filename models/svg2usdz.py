@@ -1,5 +1,5 @@
 # /// script
-# requires-python = ">=3.11"
+# requires-python = "==3.13.*"  # one Python everywhere, so every machine builds the same models
 # dependencies = [
 #   "usd-core",
 #   "trimesh",
