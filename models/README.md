@@ -53,6 +53,11 @@ layer. Optional `[size]` keys:
 - `appendage_depth_mm`: thickness of those thin parts.
 - `board_mm`: for a bare board, the PCB thickness. The outline is built this
   thin, and `depth_mm` stays the overall height of the stack.
+- `min_detail_mm2`, `detail_tolerance_mm`: on a bare board, groups of drawn shapes
+  whose pieces average under `min_detail_mm2` (default 1.0) are left off, such as
+  silkscreen text, small pads and QR codes, and the rest are simplified to
+  `detail_tolerance_mm` (default 0.03). Set `min_detail_mm2 = 0` to keep everything.
+  Other models keep everything unless they set these.
 - `edge_radius_mm`, `front_edge_radius_mm`: round the case's back and front
   edges. Keep the front small when the drawing has a bezel at the edge.
 - `body_color`: the case color, when the drawing's main color is a panel or

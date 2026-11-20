@@ -44,6 +44,7 @@ from scipy.spatial import Delaunay
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon, box
 from shapely.geometry.polygon import orient
 from shapely.ops import unary_union
+from shapely.strtree import STRtree
 from svgelements import SVG, Circle, Ellipse, Line, Path, Shape, SimpleLine
 
 COPYRIGHT = (
@@ -58,6 +59,8 @@ AUTO_LAYER_MM = 0.3      # relief of color regions on the face in auto mode
 SCREEN_MM = 0.1          # thickness of the Screen part over the drawn display
 SAMPLE_MM = 0.5          # target spacing of points along curves
 SIMPLIFY_MM = 0.05       # outline simplification tolerance
+BOARD_MIN_DETAIL_MM2 = 1.0        # bare boards: drawn shapes whose pieces average less are left off
+BOARD_DETAIL_TOLERANCE_MM = 0.03  # bare boards: how far a face outline may move when simplified
 
 
 # --- SVG reading --------------------------------------------------------------
@@ -149,6 +152,53 @@ def element_polygon(e, step, simplify):
 
 
 # --- spec matching ------------------------------------------------------------
+
+def straight(a, b, c, tolerance=1e-4):
+    """Whether (t, r) point b lies on the line from a to c, to within tolerance mm."""
+    (t0, r0), (t1, r1), (t2, r2) = a, b, c
+    if abs(t2 - t0) < 1e-9:
+        return False
+    return abs(r0 + (r2 - r0) * (t1 - t0) / (t2 - t0) - r1) < tolerance
+
+
+def without_fine_detail(elements, scale, min_area, gap_mm=1.0):
+    """elements without fine detail: groups of same-colored shapes within gap_mm of each other
+    whose pieces average under min_area mm². Deciding per group keeps or leaves off a word or a QR
+    code whole, where deciding per shape would drop a word's thin letters and keep its wide ones."""
+    if min_area <= 0 or not elements:
+        return elements
+    reach = [e.poly.buffer(gap_mm / scale / 2) for e in elements]
+    parent = list(range(len(elements)))
+
+    def root(i):
+        while parent[i] != i:
+            parent[i] = parent[parent[i]]
+            i = parent[i]
+        return i
+
+    tree = STRtree(reach)
+    for i, g in enumerate(reach):
+        for j in tree.query(g, predicate="intersects"):
+            if j > i and elements[i].fill_hex == elements[j].fill_hex:
+                parent[root(int(j))] = root(i)
+    area, pieces = {}, {}
+    for i, e in enumerate(elements):
+        r = root(i)
+        area[r] = area.get(r, 0) + e.poly.area * scale * scale
+        pieces[r] = pieces.get(r, 0) + len(polygons(e.poly))
+    return [e for i, e in enumerate(elements)
+            if not pieces[root(i)] or area[root(i)] / pieces[root(i)] >= min_area]
+
+
+def lighten(geom, tolerance):
+    """geom with its outlines simplified to tolerance (mm), and without the slivers left where
+    shapes painted over each other almost meet."""
+    if tolerance <= 0:
+        return geom
+    kept = [p.simplify(tolerance, preserve_topology=True).buffer(0) for p in polygons(geom)
+            if p.area >= tolerance * tolerance]
+    return unary_union([p for p in kept if not p.is_empty]) if kept else Polygon()
+
 
 def as_list(v):
     if v is None:
@@ -434,6 +484,13 @@ def build(spec, svg_path):
     # A bare board is built at PCB thickness; depth_mm is then the overall
     # height of the stack and only components ([[block]]) stand taller.
     depth = float(size.get("board_mm", size["depth_mm"]))
+    # A bare board's drawing carries every silkscreen letter, pad and via, and each would become
+    # its own raised shape. Drawn shapes whose pieces average under min_detail_mm2 are left off and
+    # the rest simplified, so the board reads as itself without component-level detail. 0 keeps
+    # everything.
+    bare = "board_mm" in size
+    detail_mm2 = float(size.get("min_detail_mm2", BOARD_MIN_DETAIL_MM2 if bare else 0))
+    detail_tol = float(size.get("detail_tolerance_mm", BOARD_DETAIL_TOLERANCE_MM if bare else 0))
     rules = spec.get("part", [])
     auto = spec.get("auto", True)
 
@@ -628,6 +685,9 @@ def build(spec, svg_path):
                 t_end = pts[-1][0]
                 pts = [(t, r) for t, r in pts if t <= t_end - r_end] or pts[:1]
                 pts += [(t_end - r_end + r_end * math.sin(a), r_end * math.cos(a)) for a in np.linspace(0, math.pi / 2, 10)]
+            # A point in the middle of a straight run adds a ring of vertices and changes nothing.
+            pts = [p for i, p in enumerate(pts)
+                   if i in (0, len(pts) - 1) or not straight(pts[i - 1], p, pts[i + 1])]
             line = [(0.0, pts[0][0])] + [(r, t) for t, r in pts] + [(0.0, pts[-1][0])]
             m = trimesh.creation.revolve(np.array(line), sections=int(an.get("sections", 40)))
             m.apply_transform(rot)
@@ -684,7 +744,7 @@ def build(spec, svg_path):
         return Point(x, y).buffer(float(bl["radius_mm"]))
 
     if auto:
-        solid = [e for e in leftover if e.solid]
+        solid = without_fine_detail([e for e in leftover if e.solid], scale, detail_mm2)
         # What each shape still shows once later shapes are painted over it.
         visible, above = [], None
         for e in reversed(solid):
@@ -792,7 +852,9 @@ def build(spec, svg_path):
                     add(name, extrude(g.intersection(bg), z + h, AUTO_LAYER_MM), mat)
 
             for color, items in by_color.items():
-                g = minus(mm_geom(unary_union([v for _, v in items])), cut_all)
+                g = lighten(minus(mm_geom(unary_union([v for _, v in items])), cut_all), detail_tol)
+                if g.is_empty:
+                    continue
                 if not has_body:
                     for tg, zc, t, tr, _, th in thins if color != dominant else []:
                         if "puff_mm" in th:

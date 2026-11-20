@@ -101,6 +101,15 @@ PY
 
 echo "built ${#built[@]}: ${built[*]-}"
 [ ${#failed[@]} -eq 0 ] || printf 'failed: %s\n' "${failed[@]}"
+# Apps ship every model, so name the heavy ones; a detailed drawing can quietly make a model
+# several times its neighbors' size.
+BUDGET_KB=1024
+heavy=()
+for name in "${built[@]+"${built[@]}"}"; do
+	kb=$(( $(wc -c < "$OUT/$name.usdz") / 1024 ))
+	[ "$kb" -le "$BUDGET_KB" ] || heavy+=("$name (${kb} KB)")
+done
+[ ${#heavy[@]} -eq 0 ] || echo "over ${BUDGET_KB} KB: ${heavy[*]}"
 [ -z "$missing" ] || echo "no spec yet: $missing"
 echo "review: $OUT/contact-sheet.html"
 [ ${#failed[@]} -eq 0 ]
