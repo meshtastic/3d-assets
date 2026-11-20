@@ -57,6 +57,10 @@ layer. Optional `[size]` keys:
   edges. Keep the front small when the drawing has a bezel at the edge.
 - `body_color`: the case color, when the drawing's main color is a panel or
   label rather than the case.
+- `clean_body_mm`, `body_radius_mm`: for a plain rectangular case with legs or an
+  antenna drawn across its edge. The body becomes a rounded rectangle fitted to it,
+  with corners of `body_radius_mm`, so those strokes leave no stubs or dents in the
+  rim. `clean_body_mm` must be wider than the strokes (half-width is enough).
 
 Other optional entries, with coordinates in SVG units:
 

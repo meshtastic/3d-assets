@@ -733,7 +733,21 @@ def build(spec, svg_path):
 
             if not has_body:
                 outline = unary_union([e.poly for e in solid])
-                outline = minus(mm_geom(unary_union([Polygon(p.exterior) for p in polygons(outline)])), cut_all)
+                outline = mm_geom(unary_union([Polygon(p.exterior) for p in polygons(outline)]))
+                if size.get("clean_body_mm"):
+                    # Replace the body with a rounded rectangle fitted to it, so legs and antennas drawn
+                    # across its edge leave no stubs, steps or dents in the rim.
+                    e = float(size["clean_body_mm"])
+                    eroded = polygons(outline.buffer(-e))
+                    if not eroded:
+                        sys.exit(f"{svg_path}: clean_body_mm = {e} removes the whole outline; use less than half its narrowest side")
+                    core = max(eroded, key=lambda g: g.area)
+                    rect = core.minimum_rotated_rectangle.buffer(e, join_style=2)
+                    rr = float(size.get("body_radius_mm", 0))
+                    if rr > 0:
+                        rect = rect.buffer(-rr).buffer(rr, quad_segs=8)
+                    outline = unary_union([outline.difference(rect.buffer(1.0)), rect])
+                outline = minus(outline, cut_all)
                 if size.get("body_color"):
                     # The case color when the drawing's main color is a panel or label.
                     mat = "body"

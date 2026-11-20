@@ -11,12 +11,14 @@ source = "Meshtastic-Apple Assets.xcassets/Chirpy.imageset/chirpy.svg"
 confidence = "estimated"
 appendage = "none"
 edge_radius_mm = 3.0
+clean_body_mm = 3.0
+body_radius_mm = 1.3
 front_edge_radius_mm = 1.2
 
 # Stick legs and flat feet, round instead of extruded.
 [[antenna]]
 name = "LeftLeg"
-start = [727, 1838]
+start = [727, 1836.0]
 end = [719, 2578]
 radius_mm = 1.65
 dome = false
@@ -25,7 +27,7 @@ sections = 24
 
 [[antenna]]
 name = "RightLeg"
-start = [1077, 1838]
+start = [1077, 1837.0]
 end = [1088, 2578]
 radius_mm = 1.65
 dome = false
@@ -53,9 +55,9 @@ sections = 24
 [[tube]]
 name = "Antenna"
 points = [[1167, 95], [1100, 127], [1028, 166], [1100, 182], [1210, 200], [1175, 234], [1135, 272],
-          [1105, 304], [1075, 333], [1050, 360], [1030, 385], [1014, 407], [1085, 487], [1157, 567]]
+          [1105, 304], [1075, 333], [1050, 360], [1030, 385], [1014, 407], [1085, 487], [1152, 562]]
 radius_mm = 1.35
-cut_width = 24
+cut_width = 10
 color = "#2c2d3c"
 
 [[thin]]
