@@ -36,6 +36,7 @@ import sys
 import tempfile
 import tomllib
 
+import mapbox_earcut
 import numpy as np
 import shapely
 import trimesh
@@ -300,13 +301,23 @@ def rounded_extrude(geom, z0, h, r, rf=None, segs=6):
             for j in range(n):
                 j2 = (j + 1) % n
                 faces += [[a + j, a + j2, b + j2], [a + j, b + j2, b + j]]
-        side = trimesh.Trimesh(verts, np.array(faces), process=False)
-        back = trimesh.creation.extrude_polygon(orient(insets[0]), 1e-4)
-        back.apply_translation([0, 0, z0])
-        front = trimesh.creation.extrude_polygon(orient(insets[-1]), 1e-4)
-        front.apply_translation([0, 0, z0 + h - 1e-4])
-        meshes += [side, back, front]
+        # Close the ends with the first and last rings themselves, so the caps share the sides'
+        # vertices and the body is one closed surface with a single face at the front and back.
+        faces += [[(len(rings) - 1) * n + i for i in tri] for tri in cap(rings[-1], up=True)]
+        faces += cap(rings[0], up=False)
+        meshes.append(trimesh.Trimesh(verts, np.array(faces), process=False))
     return meshes
+
+
+def cap(ring, up):
+    """Triangles filling a counter-clockwise ring, as indices into it, facing +z if up, else -z."""
+    tris = mapbox_earcut.triangulate_float64(np.asarray(ring, dtype=np.float64),
+                                             np.array([len(ring)], dtype=np.uint32)).reshape(-1, 3)
+    # Earcut winds every triangle the same way, so take the direction from their total area:
+    # a sliver's own sign can come out either way.
+    a, b, c = ring[tris[:, 0]], ring[tris[:, 1]], ring[tris[:, 2]]
+    ccw = ((b[:, 0] - a[:, 0]) * (c[:, 1] - a[:, 1]) - (b[:, 1] - a[:, 1]) * (c[:, 0] - a[:, 0])).sum() > 0
+    return (tris if ccw == up else tris[:, ::-1]).tolist()
 
 
 def fine_mesh(p, step):
